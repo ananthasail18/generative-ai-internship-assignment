@@ -65,6 +65,41 @@ def extract_page_texts(file_path: str | Path, max_pages: Optional[int] = None) -
         doc.close()
 
 
+def extract_toc_and_context(file_path: str | Path) -> str:
+    """Extract outline TOC and smart sampled pages from PDF for full book structure analysis."""
+    p = Path(file_path)
+    if fitz is None:
+        return ""
+    doc = fitz.open(str(p))
+    try:
+        parts: List[str] = []
+        
+        # 1. Native PyMuPDF Bookmark Table of Contents
+        toc = doc.get_toc()
+        if toc:
+            toc_lines = [f"{'  ' * (item[0]-1)}- {item[1]} (Page {item[2]})" for item in toc[:150]]
+            parts.append("PDF BOOKMARK TABLE OF CONTENTS:\n" + "\n".join(toc_lines))
+        
+        # 2. First 20 pages (usually contains printed TOC, preface, chapter index)
+        first_pages_count = min(20, doc.page_count)
+        first_pages = [doc.load_page(i).get_text("text") for i in range(first_pages_count)]
+        parts.append(f"FIRST {first_pages_count} PAGES (TABLE OF CONTENTS / PREFACE / FRONT MATTER):\n" + "\n\n--- PAGE ---\n\n".join(first_pages))
+        
+        # 3. Sample pages evenly across the document if > 20 pages
+        if doc.page_count > 20:
+            step = max(5, doc.page_count // 30)
+            sample_indices = list(range(20, doc.page_count, step))[:25]
+            sampled_pages = [f"[Page {idx+1}]\n" + doc.load_page(idx).get_text("text")[:800] for idx in sample_indices]
+            parts.append("SAMPLED PAGES ACROSS DOCUMENT:\n" + "\n\n".join(sampled_pages))
+            
+        return "\n\n====================\n\n".join(parts)
+    except Exception as e:
+        logger.warning("Failed to extract TOC context: %s", e)
+        return ""
+    finally:
+        doc.close()
+
+
 def infer_title_from_first_page(file_path: str | Path, fallback: str) -> str:
     """Best-effort title inference when PDF metadata is empty."""
     try:

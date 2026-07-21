@@ -74,7 +74,7 @@ export function SignupForm() {
           <span className="w-full border-t border-border" />
         </div>
         <div className="relative flex justify-center text-xs uppercase tracking-wider">
-          <span className="bg-white px-2 text-muted-foreground">or with email</span>
+          <span className="bg-background px-2 text-muted-foreground">or with email</span>
         </div>
       </div>
 

@@ -40,7 +40,7 @@ export function Testimonials() {
         <div className="mt-14 grid gap-6 md:grid-cols-3">
           {testimonials.map((t, i) => (
             <Reveal key={t.name} delay={i * 0.05}>
-              <figure className="h-full rounded-2xl border border-border bg-white p-6 shadow-sm">
+              <figure className="h-full rounded-2xl border border-border bg-background p-6 shadow-sm">
                 <blockquote className="text-sm leading-relaxed text-foreground">
                   “{t.quote}”
                 </blockquote>

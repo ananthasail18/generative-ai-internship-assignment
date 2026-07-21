@@ -85,7 +85,7 @@ export function PipelineProgress({ docs, onCourseReady }: Props) {
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -16 }}
         transition={{ duration: 0.3 }}
-        className="rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/5 via-violet-50 to-primary/5 shadow-sm overflow-hidden"
+        className="rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 shadow-sm overflow-hidden"
       >
         {/* Header row */}
         <button

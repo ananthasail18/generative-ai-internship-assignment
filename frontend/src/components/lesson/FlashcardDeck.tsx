@@ -51,7 +51,7 @@ export function FlashcardDeck({ flashcards }: { flashcards: Flashcard[] }) {
             className={`absolute inset-0 w-full h-full rounded-2xl cursor-pointer p-6 sm:p-10 flex flex-col items-center justify-center text-center shadow-lg border ${
               isFlipped 
                 ? "bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20" 
-                : "bg-white border-border hover:shadow-xl transition-shadow"
+                : "bg-background border-border hover:shadow-xl transition-shadow"
             }`}
           >
             {!isFlipped ? (
@@ -72,7 +72,7 @@ export function FlashcardDeck({ flashcards }: { flashcards: Flashcard[] }) {
                 </p>
                 
                 {(current.memory_tricks || current.quick_notes) && (
-                  <div className="mt-4 p-4 bg-white/60 rounded-xl border border-primary/10 w-full max-w-md">
+                  <div className="mt-4 p-4 bg-background/60 rounded-xl border border-primary/10 w-full max-w-md">
                     {current.memory_tricks && (
                       <div className="flex items-start gap-2 text-sm text-left">
                         <Lightbulb className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />

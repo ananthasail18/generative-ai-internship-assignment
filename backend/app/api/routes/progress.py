@@ -42,11 +42,21 @@ def get_dashboard_progress(
             )
 
     overall = (total_completed / total_lessons * 100.0) if total_lessons else 0.0
+
+    # Aggregate time spent and quiz score
+    user_progress = db.query(Progress).filter(Progress.user_id == user_id).all()
+    total_time_spent_seconds = sum(p.time_spent for p in user_progress)
+    
+    scored_progress = [p.quiz_score for p in user_progress if p.quiz_score is not None]
+    average_quiz_score = (sum(scored_progress) / len(scored_progress)) if scored_progress else None
+
     return DashboardProgress(
         overall_progress_percent=round(overall, 2),
         total_courses=len(courses),
         total_lessons_completed=total_completed,
         total_lessons=total_lessons,
+        total_time_spent_seconds=total_time_spent_seconds,
+        average_quiz_score=average_quiz_score,
         continue_learning=continue_learning[:4],
     )
 

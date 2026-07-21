@@ -56,8 +56,8 @@ def github_login() -> RedirectResponse:
     return RedirectResponse(url)
 
 
-@router.get("/google/callback", response_model=TokenResponse)
-async def google_callback(code: str, db: Session = Depends(get_db)) -> TokenResponse:
+@router.get("/google/callback", include_in_schema=False)
+async def google_callback(code: str, db: Session = Depends(get_db)) -> RedirectResponse:
     access_token_g = await oauth_service.exchange_google_code(code)
     profile = await oauth_service.fetch_google_profile(access_token_g)
     user = user_service.upsert_oauth_user(
@@ -68,11 +68,12 @@ async def google_callback(code: str, db: Session = Depends(get_db)) -> TokenResp
         name=profile.name,
         image=profile.image,
     )
-    return _token_for(user)
+    # Redirect to frontend with the new JWT token
+    return oauth_redirect(create_access_token(user.id, extra={"email": user.email}))
 
 
-@router.get("/github/callback", response_model=TokenResponse)
-async def github_callback(code: str, db: Session = Depends(get_db)) -> TokenResponse:
+@router.get("/github/callback", include_in_schema=False)
+async def github_callback(code: str, db: Session = Depends(get_db)) -> RedirectResponse:
     access_token_g = await oauth_service.exchange_github_code(code)
     profile = await oauth_service.fetch_github_profile(access_token_g)
     user = user_service.upsert_oauth_user(
@@ -83,13 +84,15 @@ async def github_callback(code: str, db: Session = Depends(get_db)) -> TokenResp
         name=profile.name,
         image=profile.image,
     )
-    return _token_for(user)
+    # Redirect to frontend with the new JWT token
+    return oauth_redirect(create_access_token(user.id, extra={"email": user.email}))
 
 
 def oauth_redirect(token: str) -> RedirectResponse:
     # Send the JWT back to the frontend via query param so the SPA can persist it.
-    sep = "&" if "?" in settings.frontend_url else "?"
-    url = f"{settings.frontend_url}/auth/callback{sep}token={token}"
+    frontend_str = str(settings.frontend_url).rstrip("/")
+    sep = "&" if "?" in frontend_str else "?"
+    url = f"{frontend_str}/auth/callback{sep}token={token}"
     return RedirectResponse(url)
 
 

@@ -49,6 +49,7 @@ export type QuizQuestion = {
 export type Lesson = {
   id: number;
   topic_id: number;
+  course_id?: number | null;
   title: string;
   content: string;
   order: number;
@@ -58,9 +59,9 @@ export type Lesson = {
   introduction?: string | null;
   explanation?: string | null;
   concepts?: Record<string, any> | null;
-  examples?: Record<string, any> | null;
+  examples?: Record<string, string> | null;
   key_takeaways?: Record<string, any> | null;
-  important_notes?: Record<string, any> | null;
+  important_notes?: string[] | null;
   summary?: string | null;
   
   stories: Story[];
@@ -88,9 +89,11 @@ export type Course = {
   id: number;
   document_id: number;
   title: string;
-  description?: string | null;
+  description?: string;
   difficulty: string;
   estimated_time: number;
+  learning_objectives?: string[] | null;
+  prerequisites?: string[] | null;
   created_at: string;
   total_lessons: number;
   completed_lessons: number;
@@ -106,6 +109,8 @@ export type DashboardProgress = {
   total_courses: number;
   total_lessons_completed: number;
   total_lessons: number;
+  total_time_spent_seconds: number;
+  average_quiz_score: number | null;
   continue_learning: Course[];
 };
 

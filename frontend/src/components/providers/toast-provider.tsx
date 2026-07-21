@@ -52,7 +52,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             key={t.id}
             onClick={() => dismiss(t.id)}
             className={cn(
-              "pointer-events-auto w-full max-w-md rounded-xl border bg-white px-4 py-3 shadow-lg",
+              "pointer-events-auto w-full max-w-md rounded-xl border bg-background px-4 py-3 shadow-lg",
               "animate-fade-in cursor-pointer",
               t.variant === "error" && "border-destructive/30 bg-destructive/5",
               t.variant === "success" && "border-primary/30 bg-primary/5",

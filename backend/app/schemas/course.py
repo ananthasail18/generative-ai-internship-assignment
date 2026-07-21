@@ -57,6 +57,7 @@ class LessonRead(BaseModel):
 
     id: int
     topic_id: int
+    course_id: Optional[int] = None
     title: str
     content: str
     order: int
@@ -79,6 +80,7 @@ class LessonRead(BaseModel):
 class LessonProgressUpdate(BaseModel):
     completed: bool = True
     time_spent: int = Field(default=0, ge=0)
+    quiz_score: Optional[int] = None
 
 
 # ----- Topic -----
@@ -113,6 +115,8 @@ class CourseRead(BaseModel):
     description: Optional[str] = None
     difficulty: str = "Beginner"
     estimated_time: int = 0
+    learning_objectives: Optional[Any] = None
+    prerequisites: Optional[Any] = None
     created_at: datetime
     total_lessons: int = 0
     completed_lessons: int = 0
@@ -133,6 +137,7 @@ class ProgressRead(BaseModel):
     completed: bool
     completed_at: Optional[datetime] = None
     time_spent: int
+    quiz_score: Optional[int] = None
 
 
 class DashboardProgress(BaseModel):
@@ -140,4 +145,6 @@ class DashboardProgress(BaseModel):
     total_courses: int
     total_lessons_completed: int
     total_lessons: int
+    total_time_spent_seconds: int = 0
+    average_quiz_score: Optional[float] = None
     continue_learning: List[CourseRead] = []

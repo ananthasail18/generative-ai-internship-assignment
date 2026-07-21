@@ -120,7 +120,7 @@ export default function UploadPage() {
           onDragLeave={() => setDragOver(false)}
           onDrop={onDrop}
           onClick={() => inputRef.current?.click()}
-          className={`grid cursor-pointer place-items-center rounded-2xl border-2 border-dashed bg-white px-6 py-16 text-center transition ${
+          className={`grid cursor-pointer place-items-center rounded-2xl border-2 border-dashed bg-background px-6 py-16 text-center transition ${
             dragOver
               ? "border-primary bg-primary/5"
               : "border-border hover:border-primary/40 hover:bg-secondary/30"

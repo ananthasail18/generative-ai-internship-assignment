@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
+  AlertCircle,
   ArrowLeft,
   ArrowRight,
   Check,
@@ -30,6 +31,7 @@ import { cn } from "@/lib/utils";
 import { FlashcardDeck } from "@/components/lesson/FlashcardDeck";
 import { QuizEngine } from "@/components/lesson/QuizEngine";
 import { ChatWidget } from "@/components/chat/ChatWidget";
+import ReactMarkdown from "react-markdown";
 
 function flattenLessons(c: CourseDetail): Lesson[] {
   return c.chapters.flatMap((ch) => ch.topics.flatMap((tp) => tp.lessons));
@@ -39,7 +41,7 @@ function flattenLessons(c: CourseDetail): Lesson[] {
 const renderDict = (data: any, icon?: React.ReactNode) => {
   if (!data) return null;
   
-  if (typeof data === "string") return <p className="text-muted-foreground mt-4">{data}</p>;
+  if (typeof data === "string") return <p className="text-foreground/80 mt-4">{data}</p>;
   
   if (Array.isArray(data)) {
     if (data.length === 0) return null;
@@ -48,9 +50,9 @@ const renderDict = (data: any, icon?: React.ReactNode) => {
         {data.map((item, i) => {
           if (typeof item === 'string') {
              return (
-               <li key={i} className="flex gap-3">
+               <li key={i} className="flex gap-3 items-start">
                  <div className="mt-1 shrink-0">{icon || <CheckCircle2 className="w-5 h-5 text-primary" />}</div>
-                 <span className="text-muted-foreground">{item}</span>
+                 <div className="text-foreground/80 leading-relaxed"><ReactMarkdown>{item}</ReactMarkdown></div>
                </li>
              );
           }
@@ -59,19 +61,19 @@ const renderDict = (data: any, icon?: React.ReactNode) => {
           
           if (!titleStr && !descStr) {
             return (
-              <li key={i} className="flex gap-3">
+              <li key={i} className="flex gap-3 items-start">
                 <div className="mt-1 shrink-0">{icon || <CheckCircle2 className="w-5 h-5 text-primary" />}</div>
-                <span className="text-muted-foreground">{JSON.stringify(item)}</span>
+                <div className="text-muted-foreground">{JSON.stringify(item)}</div>
               </li>
             );
           }
           
           return (
-            <li key={i} className="flex gap-3">
+            <li key={i} className="flex gap-3 items-start">
               <div className="mt-1 shrink-0">{icon || <CheckCircle2 className="w-5 h-5 text-primary" />}</div>
               <div>
-                {titleStr && <strong className="text-foreground font-semibold block sm:inline">{titleStr}: </strong>}
-                <span className="text-muted-foreground">{descStr}</span>
+                {titleStr && <strong className="text-foreground font-bold block sm:inline">{titleStr}: </strong>}
+                <div className="text-foreground/75 inline"><ReactMarkdown>{descStr}</ReactMarkdown></div>
               </div>
             </li>
           );
@@ -85,11 +87,11 @@ const renderDict = (data: any, icon?: React.ReactNode) => {
     return (
       <ul className="space-y-3 mt-4">
         {Object.entries(data).map(([key, value], i) => (
-          <li key={i} className="flex gap-3">
+          <li key={i} className="flex gap-3 items-start">
             <div className="mt-1 shrink-0">{icon || <CheckCircle2 className="w-5 h-5 text-primary" />}</div>
             <div>
               <strong className="text-foreground font-semibold block sm:inline">{key}: </strong>
-              <span className="text-muted-foreground">{typeof value === 'object' ? JSON.stringify(value) : String(value)}</span>
+              <div className="text-foreground/80 inline"><ReactMarkdown>{typeof value === 'object' ? JSON.stringify(value) : String(value)}</ReactMarkdown></div>
             </div>
           </li>
         ))}
@@ -109,48 +111,75 @@ export default function LessonPage() {
   const [course, setCourse] = useState<CourseDetail | null>(null);
   const [lesson, setLesson] = useState<Lesson | null>(null);
   const [loading, setLoading] = useState(true);
+  const [lessonLoading, setLessonLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [activeChapterId, setActiveChapterId] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    api.courses()
-      .then(async (courses) => {
-        for (const c of courses) {
-          const full = await api.course(c.id);
-          const flat = flattenLessons(full);
-          if (flat.some((l) => l.id === lessonId)) {
-            if (cancelled) return;
-            setCourse(full);
-            setActiveChapterId(full.chapters[0]?.id ?? null);
-            return;
-          }
-        }
-        throw new Error("Lesson not found in any of your courses.");
-      })
-      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load lesson"))
-      .finally(() => setLoading(false));
-    return () => {
-      cancelled = true;
-    };
-  }, [lessonId]);
+    setLoading(true);
+    setLessonLoading(true);
 
-  useEffect(() => {
+    // Step 1: Fetch lesson (backend returns course_id)
     api.lesson(lessonId)
-      .then(setLesson)
-      .catch(() => null);
+      .then(async (lessonData) => {
+        if (cancelled) return;
+        setLesson(lessonData);
+        setLessonLoading(false);
+
+        // Step 2: Use course_id from lesson to directly fetch the parent course
+        const courseId = lessonData.course_id;
+        if (!courseId) throw new Error("Lesson not associated with a course.");
+        const full = await api.course(courseId);
+        if (cancelled) return;
+        setCourse(full);
+
+        // Open the chapter that contains this lesson in the sidebar
+        const owningChapter = full.chapters.find((ch) =>
+          ch.topics.some((tp) => tp.lessons.some((l) => l.id === lessonId))
+        );
+        setActiveChapterId(owningChapter?.id ?? full.chapters[0]?.id ?? null);
+      })
+      .catch((e) => {
+        if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load lesson");
+        setLessonLoading(false);
+      })
+      .finally(() => { if (!cancelled) setLoading(false); });
+
+    return () => { cancelled = true; };
   }, [lessonId]);
 
   const flat = useMemo(() => (course ? flattenLessons(course) : []), [course]);
   const currentIndex = useMemo(() => flat.findIndex((l) => l.id === lessonId), [flat, lessonId]);
   const prevLesson = currentIndex > 0 ? flat[currentIndex - 1] : undefined;
   const nextLesson = currentIndex > -1 && currentIndex < flat.length - 1 ? flat[currentIndex + 1] : undefined;
+  const [sessionTimeSpent, setSessionTimeSpent] = useState(0);
+
+  // Active time tracker
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setSessionTimeSpent((prev) => prev + 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Silent sync every 30 seconds
+  useEffect(() => {
+    if (sessionTimeSpent > 0 && sessionTimeSpent % 30 === 0 && lesson) {
+      api.completeLesson(lessonId, { 
+        completed: !!lesson?.completed, 
+        time_spent: (lesson?.time_spent ?? 0) + sessionTimeSpent 
+      }).catch(console.error);
+    }
+  }, [sessionTimeSpent, lesson, lessonId]);
 
   const markComplete = async (completed: boolean) => {
+    if (!lesson) return;
     setSaving(true);
     try {
-      await api.completeLesson(lessonId, { completed, time_spent: lesson?.time_spent ?? 0 });
+      const totalTime = (lesson.time_spent ?? 0) + sessionTimeSpent;
+      await api.completeLesson(lessonId, { completed, time_spent: totalTime });
       setLesson((l) => (l ? { ...l, completed } : l));
       setCourse((c) => {
         if (!c) return c;
@@ -185,24 +214,30 @@ export default function LessonPage() {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  if (loading) return <PageLoader label="Loading lesson…" />;
-  if (error || !course || !lesson) return (
+  if (loading || lessonLoading) return <PageLoader label="Loading lesson…" />;
+  if (error || !course) return (
     <div className="mx-auto max-w-xl text-center">
-      <h1 className="text-xl font-semibold">Lesson not found</h1>
+      <h1 className="text-xl font-semibold">{error || "Lesson not found"}</h1>
       <Button asChild className="mt-4"><Link href="/dashboard">Back to dashboard</Link></Button>
+    </div>
+  );
+  if (!lesson) return (
+    <div className="mx-auto max-w-xl text-center">
+      <h1 className="text-xl font-semibold">Loading lesson content…</h1>
     </div>
   );
 
   const currentChapter = course.chapters.find((ch) => ch.topics.some((tp) => tp.lessons.some((l) => l.id === lessonId)));
 
-  // Fallback to basic rendering if no rich content exists
-  const hasRichContent = lesson.introduction || lesson.explanation || lesson.concepts;
+  // Use rich structured content if available, otherwise fall back to raw markdown
+  const hasRichContent = !!(lesson.introduction || lesson.explanation || lesson.concepts || (lesson.key_takeaways && lesson.key_takeaways.length > 0));
+  const hasAnyContent = hasRichContent || (lesson.content && lesson.content.trim() && !lesson.content.includes("Content coming soon"));
 
   return (
     <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
       {/* Sidebar Navigation */}
       <aside className="lg:sticky lg:top-24 lg:self-start hidden lg:block">
-        <div className="rounded-2xl border border-border bg-white shadow-sm overflow-hidden flex flex-col max-h-[80vh]">
+        <div className="rounded-2xl border border-border bg-background shadow-sm overflow-hidden flex flex-col max-h-[80vh]">
           <div className="border-b border-border p-5 bg-secondary/30">
             <p className="text-xs font-bold uppercase tracking-widest text-primary mb-1">Course Content</p>
             <p className="truncate text-sm font-semibold text-foreground">{course.title}</p>
@@ -223,28 +258,30 @@ export default function LessonPage() {
                 {activeChapterId === ch.id && (
                   <ul className="mt-1 space-y-1 pl-4 border-l-2 border-secondary ml-3">
                     {ch.topics.map((tp) => (
-                      <li key={tp.id} className="space-y-1">
-                        <p className="px-2 py-1.5 text-xs font-bold text-muted-foreground uppercase tracking-wider">{tp.title}</p>
-                        {tp.lessons.map((l) => (
-                          <li key={l.id} className="list-none">
-                            <Link
-                              href={`/lesson/${l.id}`}
-                              className={cn(
-                                "flex items-start gap-2.5 rounded-md px-2.5 py-2 text-sm transition-all",
-                                l.id === lessonId
-                                  ? "bg-primary/10 text-primary font-semibold shadow-sm"
-                                  : "text-foreground/80 hover:bg-secondary hover:text-foreground"
-                              )}
-                            >
-                              {l.completed ? (
-                                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
-                              ) : (
-                                <Circle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/50" />
-                              )}
-                              <span className="line-clamp-2 leading-tight">{l.title}</span>
-                            </Link>
-                          </li>
-                        ))}
+                      <li key={tp.id} className="space-y-1 pb-2">
+                        <p className="px-2 py-1 text-xs font-bold text-muted-foreground uppercase tracking-wider">{tp.title}</p>
+                        <ul className="space-y-0.5">
+                          {tp.lessons.map((l) => (
+                            <li key={l.id} className="list-none">
+                              <Link
+                                href={`/lesson/${l.id}`}
+                                className={cn(
+                                  "flex items-start gap-2.5 rounded-md px-2.5 py-2 text-sm transition-all",
+                                  l.id === lessonId
+                                    ? "bg-primary/10 text-primary font-semibold shadow-sm"
+                                    : "text-foreground/80 hover:bg-secondary hover:text-foreground"
+                                )}
+                              >
+                                {l.completed ? (
+                                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                                ) : (
+                                  <Circle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/50" />
+                                )}
+                                <span className="line-clamp-2 leading-tight">{l.title}</span>
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
                       </li>
                     ))}
                   </ul>
@@ -284,55 +321,79 @@ export default function LessonPage() {
             {lesson.quizzes?.length > 0 && <Button variant="secondary" size="sm" onClick={() => scrollTo('quiz')} className="rounded-full">Quiz</Button>}
           </div>
 
-          {!hasRichContent ? (
-            <div className="prose prose-lg max-w-none text-foreground/80">
-              {lesson.content.split("\n").map((line, i) => (
-                <p key={i} className="mb-4">{line}</p>
-              ))}
+          {!hasAnyContent ? (
+            <div className="rounded-2xl border border-dashed border-border bg-secondary/20 p-12 text-center">
+              <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                <BookOpen className="w-7 h-7 text-primary" />
+              </div>
+              <h3 className="text-lg font-semibold text-foreground mb-2">Content is being generated</h3>
+              <p className="text-muted-foreground text-sm max-w-sm mx-auto">
+                AI is writing this lesson. Reload in a few seconds, or click <strong>Next</strong> to continue and come back.
+              </p>
+            </div>
+          ) : !hasRichContent ? (
+            <div className="prose prose-invert prose-lg max-w-none text-foreground/80 leading-relaxed">
+              <ReactMarkdown>{lesson.content}</ReactMarkdown>
             </div>
           ) : (
             <div className="space-y-12">
               {/* Introduction & Explanation Section */}
               <section id="theory" className="scroll-mt-24 space-y-8">
                 {lesson.introduction && (
-                  <div className="text-xl leading-relaxed text-muted-foreground font-medium">
-                    {lesson.introduction}
+                  <div className="text-xl leading-relaxed text-foreground/90 font-medium">
+                    <ReactMarkdown>{lesson.introduction}</ReactMarkdown>
                   </div>
                 )}
                 
                 {lesson.explanation && (
-                  <div className="bg-white rounded-2xl p-6 sm:p-10 border border-border shadow-sm">
+                  <div className="bg-background rounded-2xl p-6 sm:p-10 border border-border shadow-sm">
                     <div className="flex items-center gap-3 mb-6">
                       <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                         <BookOpen className="w-5 h-5 text-primary" />
                       </div>
                       <h2 className="text-2xl font-bold text-foreground">Deep Dive</h2>
                     </div>
-                    <div className="prose prose-lg max-w-none text-foreground/90 whitespace-pre-wrap">
-                      {lesson.explanation}
+                    <div className="prose prose-invert prose-lg max-w-none text-foreground/90 leading-relaxed space-y-4">
+                      <ReactMarkdown>{lesson.explanation}</ReactMarkdown>
                     </div>
                   </div>
                 )}
 
                 {/* Concepts & Examples */}
                 <div className="grid sm:grid-cols-2 gap-6">
-                  {lesson.concepts && Object.keys(lesson.concepts).length > 0 && (
-                    <div className="bg-gradient-to-br from-indigo-50 to-blue-50/50 rounded-2xl p-6 border border-indigo-100">
-                      <h3 className="text-lg font-bold flex items-center gap-2 text-indigo-900 mb-2">
-                        <Target className="w-5 h-5 text-indigo-600" /> Key Concepts
+                  {Boolean(lesson.concepts && (Array.isArray(lesson.concepts) ? lesson.concepts.length > 0 : Object.keys(lesson.concepts).length > 0)) && (
+                    <div className="bg-indigo-950/40 rounded-2xl p-6 border border-indigo-500/20">
+                      <h3 className="text-lg font-bold flex items-center gap-2 text-indigo-300 mb-2">
+                        <Target className="w-5 h-5 text-indigo-400" /> Key Concepts
                       </h3>
-                      {renderDict(lesson.concepts, <Sparkles className="w-4 h-4 text-indigo-500" />)}
+                      {renderDict(lesson.concepts, <Sparkles className="w-4 h-4 text-indigo-400" />)}
                     </div>
                   )}
-                  {lesson.examples && Object.keys(lesson.examples).length > 0 && (
-                    <div className="bg-gradient-to-br from-emerald-50 to-teal-50/50 rounded-2xl p-6 border border-emerald-100">
-                      <h3 className="text-lg font-bold flex items-center gap-2 text-emerald-900 mb-2">
-                        <Lightbulb className="w-5 h-5 text-emerald-600" /> Real Examples
+                  {Boolean(lesson.examples && (Array.isArray(lesson.examples) ? lesson.examples.length > 0 : Object.keys(lesson.examples).length > 0)) && (
+                    <div className="bg-emerald-950/40 rounded-2xl p-6 border border-emerald-500/20">
+                      <h3 className="text-lg font-bold flex items-center gap-2 text-emerald-300 mb-2">
+                        <Lightbulb className="w-5 h-5 text-emerald-400" /> Real Examples
                       </h3>
-                      {renderDict(lesson.examples, <CheckCircle2 className="w-4 h-4 text-emerald-500" />)}
+                      {renderDict(lesson.examples, <CheckCircle2 className="w-4 h-4 text-emerald-400" />)}
                     </div>
                   )}
                 </div>
+
+                {lesson.important_notes && lesson.important_notes.length > 0 && (
+                  <div className="bg-rose-950/40 rounded-2xl p-6 border border-rose-500/25 mt-6">
+                    <h3 className="text-lg font-bold flex items-center gap-2 text-rose-300 mb-4">
+                      <AlertCircle className="w-5 h-5 text-rose-400" /> Important Notes
+                    </h3>
+                    <ul className="space-y-3">
+                      {lesson.important_notes.map((note, idx) => (
+                        <li key={idx} className="flex items-start gap-3 text-rose-200/80">
+                          <CheckCircle2 className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+                          <span className="leading-relaxed">{note}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </section>
 
               {/* Stories / Analogies */}
@@ -341,29 +402,29 @@ export default function LessonPage() {
                   <hr className="border-border my-12" />
                   <div className="space-y-6">
                     {lesson.stories.map((story) => (
-                      <div key={story.id} className="bg-amber-50/50 rounded-2xl p-6 sm:p-10 border border-amber-200 shadow-sm relative overflow-hidden">
+                      <div key={story.id} className="bg-amber-950/40 rounded-2xl p-6 sm:p-10 border border-amber-500/25 shadow-sm relative overflow-hidden">
                         <div className="absolute top-0 right-0 p-8 opacity-5">
-                          <Lightbulb className="w-32 h-32 text-amber-900" />
+                          <Lightbulb className="w-32 h-32 text-amber-400" />
                         </div>
-                        <h2 className="text-2xl font-bold text-amber-950 mb-6 flex items-center gap-3">
-                          <span className="bg-amber-200 text-amber-800 p-2 rounded-xl"><Lightbulb className="w-6 h-6" /></span>
+                        <h2 className="text-2xl font-bold text-amber-200 mb-6 flex items-center gap-3">
+                          <span className="bg-amber-500/20 text-amber-300 p-2 rounded-xl"><Lightbulb className="w-6 h-6" /></span>
                           Analogy & Story
                         </h2>
-                        {story.analogy && <p className="text-lg font-medium text-amber-900 mb-4 italic">&quot;{story.analogy}&quot;</p>}
-                        {story.story && <p className="text-amber-900/90 leading-relaxed mb-6">{story.story}</p>}
+                        {story.analogy && <p className="text-lg font-medium text-amber-300 mb-4 italic">&quot;{story.analogy}&quot;</p>}
+                        {story.story && <p className="text-amber-100/80 leading-relaxed mb-6">{story.story}</p>}
                         
                         {(story.real_world_example || story.beginner_explanation) && (
-                          <div className="bg-white/60 rounded-xl p-5 mt-6 border border-amber-200/50">
+                          <div className="bg-white/5 rounded-xl p-5 mt-6 border border-amber-400/20">
                             {story.real_world_example && (
                               <div className="mb-3">
-                                <strong className="text-amber-950">Real World: </strong>
-                                <span className="text-amber-900/80">{story.real_world_example}</span>
+                                <strong className="text-amber-300">Real World: </strong>
+                                <span className="text-amber-100/80">{story.real_world_example}</span>
                               </div>
                             )}
                             {story.beginner_explanation && (
                               <div>
-                                <strong className="text-amber-950">In Simple Terms: </strong>
-                                <span className="text-amber-900/80">{story.beginner_explanation}</span>
+                                <strong className="text-amber-300">In Simple Terms: </strong>
+                                <span className="text-amber-100/80">{story.beginner_explanation}</span>
                               </div>
                             )}
                           </div>
@@ -382,6 +443,23 @@ export default function LessonPage() {
                 </section>
               )}
 
+              {/* Key Takeaways */}
+              {lesson.key_takeaways && lesson.key_takeaways.length > 0 && (
+                <section className="bg-primary/5 rounded-2xl p-8 border border-primary/10">
+                  <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-primary">
+                    <Target className="w-5 h-5" /> Key Takeaways
+                  </h3>
+                  <ul className="space-y-3">
+                    {(Array.isArray(lesson.key_takeaways) ? lesson.key_takeaways : []).map((tk: any, idx: number) => (
+                      <li key={idx} className="flex items-start gap-3">
+                        <CheckCircle2 className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                        <span className="leading-relaxed font-medium">{typeof tk === 'string' ? tk : JSON.stringify(tk)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+
               {/* Summary */}
               {lesson.summary && (
                 <section className="bg-secondary/30 rounded-2xl p-8 border border-border">
@@ -396,7 +474,17 @@ export default function LessonPage() {
               {lesson.quizzes && lesson.quizzes.length > 0 && (
                 <section id="quiz" className="scroll-mt-24">
                   <hr className="border-border my-12" />
-                  <QuizEngine questions={lesson.quizzes} />
+                  <QuizEngine 
+                    questions={lesson.quizzes} 
+                    onComplete={(score) => {
+                      api.completeLesson(lessonId, { 
+                        completed: true, 
+                        time_spent: (lesson?.time_spent ?? 0) + sessionTimeSpent,
+                        quiz_score: score
+                      }).catch(console.error);
+                      markComplete(true);
+                    }} 
+                  />
                 </section>
               )}
             </div>
@@ -404,7 +492,7 @@ export default function LessonPage() {
         </motion.div>
 
         {/* Footer Actions */}
-        <div className="mt-12 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between p-6 bg-white border border-border rounded-2xl shadow-sm">
+        <div className="mt-12 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between p-6 bg-background border border-border rounded-2xl shadow-sm">
           <Button
             size="lg"
             variant={lesson.completed ? "outline" : "default"}

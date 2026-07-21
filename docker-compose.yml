@@ -24,6 +24,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    env_file:
+      - .env
     environment:
       DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/courseforge
       JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
@@ -37,9 +39,14 @@ services:
       MAX_UPLOAD_MB: "100"
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_API_KEY_2: ${GEMINI_API_KEY_2:-}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
     ports:
       - "8000:8000"
     volumes:
+      - ./backend:/app
       - ./uploads:/data/uploads
     command: >
       sh -c "alembic upgrade head &&

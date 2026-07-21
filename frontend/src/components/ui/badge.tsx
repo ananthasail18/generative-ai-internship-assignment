@@ -8,7 +8,7 @@ const styles: Record<Variant, string> = {
   default: "bg-secondary text-secondary-foreground",
   primary: "bg-primary/10 text-primary",
   accent: "bg-accent/10 text-accent",
-  outline: "border border-border bg-white text-foreground",
+  outline: "border border-border bg-background text-foreground",
   success: "bg-emerald-100 text-emerald-700",
 };
 

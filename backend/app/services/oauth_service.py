@@ -88,7 +88,7 @@ async def exchange_github_code(code: str) -> str:
                 "client_secret": settings.github_client_secret,
                 "redirect_uri": settings.github_redirect_uri,
             },
-            headers={"Accept": "application/json"},
+            headers={"Accept": "application/json", "User-Agent": "CourseForge-App"},
         )
         resp.raise_for_status()
         data = resp.json()
@@ -96,7 +96,11 @@ async def exchange_github_code(code: str) -> str:
 
 
 async def fetch_github_profile(access_token: str) -> OAuthProfile:
-    headers = {"Authorization": f"Bearer {access_token}", "Accept": "application/vnd.github+json"}
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "CourseForge-App",
+    }
     async with httpx.AsyncClient(timeout=20.0) as client:
         resp = await client.get(GITHUB_USER_URL, headers=headers)
         resp.raise_for_status()

@@ -55,7 +55,7 @@ export function Hero() {
           transition={{ duration: 0.7, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
           className="mx-auto mt-14 max-w-5xl"
         >
-          <div className="rounded-2xl border border-border bg-white shadow-xl">
+          <div className="rounded-2xl border border-border bg-background shadow-xl">
             <div className="flex items-center gap-1.5 border-b border-border px-4 py-3">
               <span className="h-2.5 w-2.5 rounded-full bg-rose-400" />
               <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />

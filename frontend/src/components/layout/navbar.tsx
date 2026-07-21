@@ -8,6 +8,7 @@ import { Logo } from "@/components/ui/logo";
 import { cn } from "@/lib/utils";
 import { BookOpen, Home, Upload } from "lucide-react";
 import { SearchModal } from "@/components/layout/SearchModal";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 type NavItem = { href: string; label: string };
 
@@ -19,7 +20,7 @@ const marketingNav: NavItem[] = [
 
 export function MarketingNavbar() {
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-border/70 bg-white/80 backdrop-blur-xl">
+    <header className="sticky top-0 z-40 w-full border-b border-border/70 bg-background/80 backdrop-blur-xl">
       <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-6">
         <Logo />
         <nav className="hidden items-center gap-7 md:flex">
@@ -33,7 +34,8 @@ export function MarketingNavbar() {
             </a>
           ))}
         </nav>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-4">
+          <ThemeToggle />
           <Link
             href="/login"
             className="text-sm font-medium text-foreground transition hover:text-primary"
@@ -54,7 +56,6 @@ export function MarketingNavbar() {
 
 const dashboardNav: NavItem[] = [
   { href: "/dashboard", label: "Dashboard" },
-  { href: "/upload", label: "Upload" },
 ];
 
 export function DashboardNavbar() {
@@ -62,7 +63,7 @@ export function DashboardNavbar() {
   const { user, logout } = useAuth();
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-border/70 bg-white/80 backdrop-blur-xl">
+    <header className="sticky top-0 z-40 w-full border-b border-border/70 bg-background/80 backdrop-blur-xl">
       <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-6">
         <div className="flex items-center gap-8">
           <Logo href="/dashboard" />
@@ -96,6 +97,7 @@ export function DashboardNavbar() {
         <SearchModal />
 
         <div className="flex items-center gap-3">
+          <ThemeToggle />
           <Link
             href="/upload"
             className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm transition hover:bg-primary/90"

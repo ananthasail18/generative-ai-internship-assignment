@@ -12,10 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.services.pdf_service import extract_page_texts
 from app.services.agents.structure_agent import build_structure
-from app.services.agents.lesson_agent import draft_lesson
-from app.services.agents.story_agent import enrich
-from app.services.agents.quiz_agent import generate_quiz
-from app.services.agents.review_agent import review_course
+from app.services.agents.mega_agent import generate_mega_lesson
 from app.models import (
     Document, Course, Chapter, Topic, Lesson,
     Story, Flashcard, QuizQuestion, PipelineJob,
@@ -42,8 +39,11 @@ def run_pipeline(document_id: int, *, db: Session) -> None:
     """Kick off the full AI course-generation pipeline and persist results."""
     logger.info(f"[Pipeline] Starting for document {document_id}")
 
-    # Mark job as running
-    _upsert_job(db, document_id, status="running", stage="Starting…", lessons_done=0, lessons_total=0)
+    # Mark job as running (preserve counts if resuming)
+    existing_job = db.query(PipelineJob).filter(PipelineJob.document_id == document_id).first()
+    init_done = existing_job.lessons_done if existing_job else 0
+    init_total = existing_job.lessons_total if existing_job else 0
+    _upsert_job(db, document_id, status="running", stage="Starting…", lessons_done=init_done, lessons_total=init_total)
 
     document = db.query(Document).filter(Document.id == document_id).first()
     if not document:
@@ -67,7 +67,6 @@ def run_pipeline(document_id: int, *, db: Session) -> None:
         return
 
     logger.info(f"[Pipeline] Extracted {len(text_chunks)} page chunks")
-
     # 2. Check for existing course
     existing_course = db.query(Course).filter(Course.document_id == document_id).first()
     
@@ -81,7 +80,7 @@ def run_pipeline(document_id: int, *, db: Session) -> None:
         # Build structure if not exists
         _upsert_job(db, document_id, stage="Building course structure with AI…")
         try:
-            structure_draft = build_structure(text_chunks, filename=document.filename)
+            structure_draft = build_structure(text_chunks, filename=document.filename, pdf_path=document.file_path)
             logger.info(f"[Pipeline] Structure built: {structure_draft.title}")
         except Exception as e:
             logger.error(f"[Pipeline] Structure agent failed: {e}")
@@ -96,6 +95,8 @@ def run_pipeline(document_id: int, *, db: Session) -> None:
             description=structure_draft.description,
             difficulty=structure_draft.difficulty,
             estimated_time=structure_draft.estimated_time,
+            learning_objectives=structure_draft.learning_objectives,
+            prerequisites=structure_draft.prerequisites,
         )
         db.add(course)
         db.flush()
@@ -126,83 +127,108 @@ def run_pipeline(document_id: int, *, db: Session) -> None:
     )
 
     total_lessons = len(lessons)
-    _upsert_job(db, document_id, stage="Resuming course generation…", lessons_total=total_lessons)
+    pending_lessons = [l for l in lessons if not l.content or "Content coming soon." in l.content]
+    already_done = total_lessons - len(pending_lessons)
+    _upsert_job(db, document_id, stage="Resuming course generation…", lessons_done=already_done, lessons_total=total_lessons)
 
-    # 4. Build chapters, topics, lessons with AI content
-    lesson_counter = 0
-    for lesson in lessons:
-        lesson_counter += 1
+    # 4. Build chapters, topics, lessons with AI content using ThreadPoolExecutor (3 parallel workers)
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    import time
 
-        # Check if lesson is already successfully generated
-        if lesson.content and "Content coming soon." not in lesson.content:
-            logger.info(f"[Pipeline] Skipping lesson {lesson_counter}/{total_lessons} — {lesson.title} (already generated)")
-            _upsert_job(db, document_id, lessons_done=lesson_counter)
-            continue
-
-        stage_label = f"✍️ Writing lesson {lesson_counter}/{total_lessons} — {lesson.title[:60]}"
-        logger.info(f"[Pipeline] {stage_label}")
-        _upsert_job(db, document_id, stage=stage_label, lessons_done=lesson_counter - 1)
-
-        # Draft lesson content
+    def _process_lesson_worker(lesson_id: int) -> bool:
+        worker_db = SessionLocal()
         try:
-            lesson_body = draft_lesson(lesson.title, text_chunks[:4])
-            lesson.content = lesson_body.content
-            lesson.introduction = lesson_body.introduction
-            lesson.explanation = lesson_body.explanation
-            lesson.key_takeaways = lesson_body.key_takeaways
-            lesson.summary = lesson_body.summary
-        except Exception as e:
-            logger.warning(f"[Pipeline] Lesson agent failed for '{lesson.title}': {e}")
-            lesson.content = f"# {lesson.title}\n\nContent coming soon."
-            lesson.introduction = lesson.explanation = lesson.summary = None
-            lesson.key_takeaways = []
+            ls = worker_db.query(Lesson).filter(Lesson.id == lesson_id).first()
+            if not ls or (ls.content and "Content coming soon." not in ls.content):
+                return True
 
-        # Enrich with story
-        try:
-            # Check if story already exists to avoid unique constraint violations
-            existing_story = db.query(Story).filter(Story.lesson_id == lesson.id).first()
-            if not existing_story:
-                enrichment = enrich(lesson.content, topic=lesson.topic.title)
-                story = Story(
-                    lesson_id=lesson.id,
-                    analogy=enrichment.analogy,
-                    story=enrichment.narrative,
-                )
-                db.add(story)
-        except Exception as e:
-            logger.warning(f"[Pipeline] Story agent failed: {e}")
+            # Text Search: Find top 3 relevant chunks
+            try:
+                lesson_query = f"{ls.topic.title} {ls.title}".lower()
+                query_terms = [t for t in lesson_query.split() if len(t) > 3]
+                
+                scores = []
+                for chunk in text_chunks:
+                    chunk_lower = chunk.lower()
+                    score = sum(chunk_lower.count(term) for term in query_terms)
+                    scores.append(score)
+                
+                top_indices = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:3]
+                relevant_chunks = [text_chunks[i] for i in top_indices] if text_chunks else []
+            except Exception:
+                relevant_chunks = text_chunks[:3] if text_chunks else []
 
-        # Generate quiz + flashcards
-        try:
-            existing_flashcards = db.query(Flashcard).filter(Flashcard.lesson_id == lesson.id).count()
+            mega_data = generate_mega_lesson(ls.title, relevant_chunks)
+            
+            ls.content = mega_data.get("content", f"# {ls.title}")
+            ls.introduction = mega_data.get("introduction")
+            ls.explanation = mega_data.get("explanation")
+            ls.key_takeaways = mega_data.get("key_takeaways", [])
+            ls.important_notes = mega_data.get("important_notes", [])
+            ls.examples = mega_data.get("examples", {})
+            ls.summary = mega_data.get("summary")
+            
+            existing_story = worker_db.query(Story).filter(Story.lesson_id == ls.id).first()
+            if not existing_story and "story" in mega_data:
+                sd = mega_data["story"]
+                worker_db.add(Story(
+                    lesson_id=ls.id,
+                    analogy=sd.get("analogy"),
+                    story=sd.get("narrative"),
+                ))
+                
+            existing_flashcards = worker_db.query(Flashcard).filter(Flashcard.lesson_id == ls.id).count()
             if existing_flashcards == 0:
-                quiz_data = generate_quiz(lesson.content)
-                for fc in quiz_data.flashcards:
-                    db.add(Flashcard(
-                        lesson_id=lesson.id,
-                        question=fc.front,
-                        answer=fc.back,
+                for fc in mega_data.get("flashcards", []):
+                    worker_db.add(Flashcard(
+                        lesson_id=ls.id,
+                        question=fc.get("front"),
+                        answer=fc.get("back"),
                     ))
-                for q in quiz_data.questions:
-                    options_dict = {chr(65 + i): opt for i, opt in enumerate(q.options)}
-                    correct_letter = chr(65 + q.answer_index)
-                    db.add(QuizQuestion(
-                        lesson_id=lesson.id,
+                for q in mega_data.get("quiz", []):
+                    opts = q.get("options", [])
+                    options_dict = {chr(65 + i): opt for i, opt in enumerate(opts)}
+                    answer_idx = q.get("answer_index", 0)
+                    correct_letter = chr(65 + answer_idx) if answer_idx < len(opts) else "A"
+                    worker_db.add(QuizQuestion(
+                        lesson_id=ls.id,
                         question_type="MCQ",
-                        question=q.question,
+                        question=q.get("question"),
                         options=options_dict,
                         correct_answer=correct_letter,
-                        explanation=q.explanation,
+                        explanation=q.get("explanation"),
                         difficulty="Medium",
                     ))
+            worker_db.commit()
+            return True
         except Exception as e:
-            logger.warning(f"[Pipeline] Quiz agent failed: {e}")
+            logger.warning(f"[Pipeline] Worker error on lesson {lesson_id}: {e}")
+            worker_db.rollback()
+            return False
+        finally:
+            worker_db.close()
 
-        # Commit each lesson immediately so progress is visible in real time
-        db.commit()
-        _upsert_job(db, document_id, lessons_done=lesson_counter)
+    # Filter lessons that still need generation
+    pending_lessons = [l for l in lessons if not l.content or "Content coming soon." in l.content]
+    already_done = len(lessons) - len(pending_lessons)
+    completed_counter = already_done
 
-    db.commit()
+    _upsert_job(db, document_id, lessons_done=completed_counter)
+    logger.info(f"[Pipeline] Starting parallel workers: {len(pending_lessons)} pending, {already_done} already done")
+
+    # Run 3 workers in parallel with a staggered submission to respect RPM limits
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        future_map = {}
+        for l in pending_lessons:
+            future = executor.submit(_process_lesson_worker, l.id)
+            future_map[future] = l
+            time.sleep(1) # Stagger submission slightly to avoid burst rate limits
+
+        for future in as_completed(future_map):
+            completed_counter += 1
+            l_obj = future_map[future]
+            stage_msg = f"✍️ Generating course — {completed_counter}/{total_lessons} lessons done"
+            _upsert_job(db, document_id, stage=stage_msg, lessons_done=completed_counter)
     _upsert_job(
         db, document_id,
         status="done",

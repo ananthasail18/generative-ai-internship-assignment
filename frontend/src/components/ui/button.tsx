@@ -12,7 +12,7 @@ const variants: Record<Variant, string> = {
   default:
     "bg-primary text-primary-foreground shadow hover:bg-primary/90",
   outline:
-    "border border-input bg-white text-foreground shadow-sm hover:bg-secondary hover:text-secondary-foreground",
+    "border border-input bg-background text-foreground shadow-sm hover:bg-secondary hover:text-secondary-foreground",
   ghost: "text-foreground hover:bg-secondary",
   secondary:
     "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",

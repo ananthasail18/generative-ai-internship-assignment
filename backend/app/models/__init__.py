@@ -169,6 +169,7 @@ class Progress(Base):
         DateTime(timezone=True), nullable=True
     )
     time_spent: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    quiz_score: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
     user: Mapped[Optional["User"]] = relationship(back_populates="progress")
     lesson: Mapped[Optional["Lesson"]] = relationship(back_populates="progress")

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import type { QuizQuestion } from "@/types";
 
-export function QuizEngine({ questions }: { questions: QuizQuestion[] }) {
+export function QuizEngine({ questions, onComplete }: { questions: QuizQuestion[], onComplete?: (score: number) => void }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [isRevealed, setIsRevealed] = useState(false);
@@ -59,6 +59,9 @@ export function QuizEngine({ questions }: { questions: QuizQuestion[] }) {
   const nextQuestion = () => {
     if (currentIndex === questions.length - 1) {
       setIsFinished(true);
+      if (onComplete) {
+        onComplete(Math.round((score / questions.length) * 100));
+      }
     } else {
       setSelectedAnswer(null);
       setIsRevealed(false);
@@ -77,7 +80,7 @@ export function QuizEngine({ questions }: { questions: QuizQuestion[] }) {
   if (isFinished) {
     const percentage = Math.round((score / questions.length) * 100);
     return (
-      <div className="w-full max-w-2xl mx-auto my-12 p-8 bg-white border border-border rounded-2xl shadow-sm text-center">
+      <div className="w-full max-w-2xl mx-auto my-12 p-8 bg-background border border-border rounded-2xl shadow-sm text-center">
         <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
           <CheckCircle2 className="w-10 h-10 text-primary" />
         </div>
@@ -120,7 +123,7 @@ export function QuizEngine({ questions }: { questions: QuizQuestion[] }) {
       
       <Progress value={((currentIndex) / questions.length) * 100} className="mb-8 h-1.5" />
 
-      <div className="bg-white rounded-2xl border border-border shadow-sm p-6 sm:p-8">
+      <div className="bg-background rounded-2xl border border-border shadow-sm p-6 sm:p-8">
         {current.difficulty && (
           <span className="inline-block px-2.5 py-1 rounded-md bg-secondary text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">
             {current.difficulty}

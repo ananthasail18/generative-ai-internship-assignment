@@ -79,7 +79,7 @@ export function OAuthButtons({ className }: { className?: string }) {
         type="button"
         onClick={() => tryOAuth("google")}
         disabled={checking !== null}
-        className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-input bg-white px-4 text-sm font-medium text-foreground shadow-sm transition hover:bg-secondary disabled:cursor-wait disabled:opacity-60"
+        className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-input bg-background px-4 text-sm font-medium text-foreground shadow-sm transition hover:bg-secondary disabled:cursor-wait disabled:opacity-60"
       >
         <GoogleIcon className="h-5 w-5" />
         {checking === "google" ? "Checking…" : "Continue with Google"}
@@ -88,7 +88,7 @@ export function OAuthButtons({ className }: { className?: string }) {
         type="button"
         onClick={() => tryOAuth("github")}
         disabled={checking !== null}
-        className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-input bg-white px-4 text-sm font-medium text-foreground shadow-sm transition hover:bg-secondary disabled:cursor-wait disabled:opacity-60"
+        className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-input bg-background px-4 text-sm font-medium text-foreground shadow-sm transition hover:bg-secondary disabled:cursor-wait disabled:opacity-60"
       >
         <Github className="h-5 w-5" />
         {checking === "github" ? "Checking…" : "Continue with GitHub"}

@@ -92,6 +92,28 @@ export default function CoursePage() {
           <p className="max-w-2xl text-sm text-muted-foreground">
             {course.description ?? "Auto-generated from your PDF."}
           </p>
+
+          {course.learning_objectives && course.learning_objectives.length > 0 && (
+            <div className="mt-4">
+              <h3 className="text-sm font-semibold text-foreground mb-1">Learning Objectives</h3>
+              <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+                {course.learning_objectives.map((obj, i) => (
+                  <li key={i}>{obj}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          
+          {course.prerequisites && course.prerequisites.length > 0 && (
+            <div className="mt-2">
+              <h3 className="text-sm font-semibold text-foreground mb-1">Prerequisites</h3>
+              <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+                {course.prerequisites.map((pre, i) => (
+                  <li key={i}>{pre}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
 
         <div className="w-full max-w-sm space-y-2">

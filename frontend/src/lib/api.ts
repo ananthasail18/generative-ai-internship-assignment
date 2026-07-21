@@ -45,6 +45,12 @@ async function request<T>(
   }
   const res = await fetch(url.toString(), { ...init, headers, cache: "no-store" });
   if (!res.ok) {
+    if (res.status === 401 && typeof window !== "undefined") {
+      window.localStorage.removeItem("courseforge_token");
+      if (!window.location.pathname.includes("/login")) {
+        window.location.href = "/login";
+      }
+    }
     let detail = `Request failed (${res.status})`;
     try {
       const data = (await res.json()) as ApiError;
@@ -86,7 +92,7 @@ export const api = {
   lesson: (id: number | string) => request<Lesson>(`/api/lesson/${id}`),
   completeLesson: (
     id: number | string,
-    body: { completed: boolean; time_spent?: number },
+    body: { completed: boolean; time_spent?: number; quiz_score?: number },
   ) =>
     request<Progress>(`/api/lesson/${id}/complete`, {
       method: "POST",

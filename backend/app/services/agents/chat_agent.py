@@ -14,9 +14,17 @@ client = OpenAI(
     base_url="https://api.groq.com/openai/v1"
 )
 
-def get_chat_response(messages: list[dict]) -> str:
+def get_chat_response(messages: list[dict], context_text: str = "") -> str:
     """Send conversation history to Groq."""
     try:
+        # Prepend context as a system message if provided
+        if context_text:
+            system_msg = {
+                "role": "system",
+                "content": f"You are an AI Tutor. Here is the context of the lesson the user is currently viewing:\n\n{context_text}\n\nUse this context to answer the user's questions if relevant."
+            }
+            messages = [system_msg] + messages
+
         response = client.chat.completions.create(
             model=MODEL,
             messages=messages,

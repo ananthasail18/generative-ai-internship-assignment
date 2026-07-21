@@ -10,6 +10,7 @@ import {
   GraduationCap,
   TrendingUp,
   Upload,
+  Target,
 } from "lucide-react";
 
 import { api } from "@/lib/api";
@@ -24,10 +25,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { PipelineProgress } from "@/components/dashboard/PipelineProgress";
 import type { Course, DashboardProgress, Document } from "@/types";
-import { formatBytes, formatDate, formatDuration } from "@/lib/utils";
+import { cn, formatBytes, formatDate, formatDuration } from "@/lib/utils";
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -85,18 +87,12 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard
           icon={GraduationCap}
           label="Courses"
           value={progress?.total_courses ?? 0}
           hint="Generated from your PDFs"
-        />
-        <StatCard
-          icon={FileText}
-          label="Uploaded PDFs"
-          value={docs.length}
-          hint={docs[0] ? `Last: ${formatDate(docs[0].upload_date)}` : undefined}
         />
         <StatCard
           icon={BookOpen}
@@ -110,14 +106,34 @@ export default function DashboardPage() {
           value={`${progress?.overall_progress_percent ?? 0}%`}
           hint={progress?.total_lessons ? "Across all courses" : undefined}
         />
+        <StatCard
+          icon={FileText}
+          label="Uploaded PDFs"
+          value={docs.filter(d => d.has_course).length}
+          hint={docs.filter(d => d.has_course)[0] ? `Last: ${formatDate(docs.filter(d => d.has_course)[0].upload_date)}` : undefined}
+        />
+        <StatCard
+          icon={Clock}
+          label="Time spent learning"
+          value={formatDuration(Math.floor((progress?.total_time_spent_seconds ?? 0) / 60))}
+        />
+        <StatCard
+          icon={Target}
+          label="Avg Quiz Score"
+          value={progress?.average_quiz_score ? `${Math.round(progress.average_quiz_score)}%` : "N/A"}
+        />
       </div>
 
-      {/* Live pipeline progress */}
-      <PipelineProgress docs={docs} onCourseReady={reload} />
+      <Tabs defaultValue="overview" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="uploads">Upload Logs</TabsTrigger>
+        </TabsList>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Courses */}
-        <div className="lg:col-span-2 space-y-4">
+        <TabsContent value="overview" className="m-0">
+          <div className="grid gap-6 lg:grid-cols-3">
+            {/* Courses */}
+            <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-foreground">Your courses</h2>
             <span className="text-sm text-muted-foreground">{courses.length} total</span>
@@ -199,40 +215,51 @@ export default function DashboardPage() {
               )}
             </CardContent>
           </Card>
+        </div>
+      </div>
+    </TabsContent>
 
+        <TabsContent value="uploads" className="space-y-6 m-0">
+          {/* Live pipeline progress */}
+          <PipelineProgress docs={docs} onCourseReady={reload} />
+          
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <FileText className="h-4 w-4 text-primary" /> Recent uploads
+                <FileText className="h-4 w-4 text-primary" /> All Upload Logs
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              {recent.length === 0 ? (
+              {docs.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No uploads yet.</p>
               ) : (
-                recent.map((d) => (
+                docs.map((d) => (
                   <div
                     key={d.id}
-                    className="flex items-center justify-between rounded-lg border border-border p-2.5"
+                    className="flex items-center justify-between rounded-lg border border-border p-3 transition hover:bg-secondary/40"
                   >
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex flex-col gap-1">
                       <p className="truncate text-sm font-medium">{d.title ?? d.filename}</p>
                       <p className="text-xs text-muted-foreground">
                         {d.page_count} pages · {formatBytes(d.file_size)} · {formatDate(d.upload_date)}
                       </p>
                     </div>
                     {d.has_course ? (
-                      <span className="shrink-0 rounded-full bg-emerald-100 text-xs font-medium text-emerald-700">
+                      <span className="shrink-0 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
                         Course ready
                       </span>
-                    ) : null}
+                    ) : (
+                      <span className="shrink-0 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700">
+                        Processing
+                      </span>
+                    )}
                   </div>
                 ))
               )}
             </CardContent>
           </Card>
-        </div>
-      </div>
+        </TabsContent>
+      </Tabs>
     </motion.div>
   );
 }
