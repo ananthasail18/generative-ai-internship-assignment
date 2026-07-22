@@ -201,6 +201,16 @@ export function PipelineProgress({ docs, onCourseReady }: Props) {
                             ({job.lessons_done}/{job.lessons_total} lessons)
                           </span>
                         )}
+                        {job.status === "done" && job.started_at && job.finished_at && (
+                          <span className="ml-1 text-emerald-600 font-medium">
+                            (Took {(() => {
+                              const diff = new Date(job.finished_at).getTime() - new Date(job.started_at).getTime();
+                              const m = Math.floor(diff / 60000);
+                              const s = Math.floor((diff % 60000) / 1000);
+                              return `${m}m ${s}s`;
+                            })()})
+                          </span>
+                        )}
                       </p>
                     </div>
                   );
