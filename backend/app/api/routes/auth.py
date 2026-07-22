@@ -56,10 +56,21 @@ def github_login() -> RedirectResponse:
     return RedirectResponse(url)
 
 
+from fastapi.responses import RedirectResponse, JSONResponse
+import httpx
+
 @router.get("/google/callback", include_in_schema=False)
-async def google_callback(code: str, db: Session = Depends(get_db)) -> RedirectResponse:
-    access_token_g = await oauth_service.exchange_google_code(code)
-    profile = await oauth_service.fetch_google_profile(access_token_g)
+async def google_callback(code: str, db: Session = Depends(get_db)):
+    try:
+        access_token_g = await oauth_service.exchange_google_code(code)
+        profile = await oauth_service.fetch_google_profile(access_token_g)
+    except httpx.HTTPStatusError as e:
+        try:
+            error_details = e.response.json()
+        except Exception:
+            error_details = e.response.text
+        return JSONResponse(status_code=400, content={"detail": f"Google API Error: {error_details}"})
+        
     user = user_service.upsert_oauth_user(
         db,
         provider=profile.provider,
