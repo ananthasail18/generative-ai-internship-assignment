@@ -11,6 +11,7 @@ services:
       - "5433:5432"
     volumes:
       - courseforge_pg:/var/lib/postgresql/data
+      - ./courseforge_production_seed.sql:/docker-entrypoint-initdb.d/seed.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d courseforge"]
       interval: 5s

@@ -26,51 +26,9 @@ export function OAuthButtons({ className }: { className?: string }) {
 
   const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-  async function tryOAuth(provider: "google" | "github") {
+  function tryOAuth(provider: "google" | "github") {
     setChecking(provider);
-    try {
-      const ctrl = new AbortController();
-      const timeout = setTimeout(() => ctrl.abort(), 2200);
-      const res = await fetch(`${base}/api/health`, { signal: ctrl.signal });
-      clearTimeout(timeout);
-      if (res.ok) {
-        window.location.href = `${base}/api/auth/${provider}`;
-        return;
-      }
-      throw new Error("backend returned " + res.status);
-    } catch {
-      const stored = window.localStorage.getItem("courseforge_token");
-      window.localStorage.setItem(
-        "courseforge_demo_user",
-        JSON.stringify(DEMO_USER),
-      );
-      try {
-        await loginWithToken("demo-token-");
-        toast({
-          title: "Demo mode",
-          description:
-            "Backend not reachable — signed you in as a demo user so you can explore the UI.",
-          variant: "success",
-        });
-        router.push("/dashboard");
-      } catch {
-        const usedFallback = window.localStorage.getItem("courseforge_demo_user");
-        if (usedFallback) {
-          window.localStorage.setItem("courseforge_token", "demo-token-");
-          toast({
-            title: "Demo mode",
-            description:
-              "Backend not reachable — exploring the UI with a demo user.",
-            variant: "success",
-          });
-          router.push("/dashboard");
-        }
-      } finally {
-        void stored;
-      }
-    } finally {
-      setChecking(null);
-    }
+    window.location.href = `${base}/api/auth/${provider}`;
   }
 
   return (

@@ -21,8 +21,6 @@ def list_courses(
 ) -> List[CourseRead]:
     courses = (
         db.query(Course)
-        .join(Course.document)
-        .filter(Course.document.has(user_id=current_user.id))
         .order_by(Course.created_at.desc())
         .all()
     )
