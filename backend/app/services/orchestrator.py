@@ -129,7 +129,7 @@ def run_pipeline(document_id: int, *, db: Session) -> None:
     total_lessons = len(lessons)
     pending_lessons = [l for l in lessons if not l.content or "Content coming soon." in l.content]
     already_done = total_lessons - len(pending_lessons)
-    _upsert_job(db, document_id, stage="Resuming course generation…", lessons_done=already_done, lessons_total=total_lessons)
+    _upsert_job(db, document_id, stage="Preparing to generate lessons…", lessons_done=already_done, lessons_total=total_lessons)
 
     # 4. Build chapters, topics, lessons with AI content using ThreadPoolExecutor (3 parallel workers)
     from concurrent.futures import ThreadPoolExecutor, as_completed
