@@ -19,6 +19,20 @@ logging.basicConfig(
 logger = logging.getLogger("courseforge")
 
 
+from contextlib import asynccontextmanager
+from app.database.init_db import initialize_database
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("Initializing database on startup...")
+    try:
+        initialize_database()
+    except Exception as e:
+        logger.exception("Failed to initialize database: %s", e)
+    yield
+
+
 def create_app() -> FastAPI:
     app = FastAPI(
         title=f"{settings.app_name} API",
@@ -30,6 +44,7 @@ def create_app() -> FastAPI:
         ),
         docs_url="/docs",
         redoc_url="/redoc",
+        lifespan=lifespan,
     )
 
     app.add_middleware(
