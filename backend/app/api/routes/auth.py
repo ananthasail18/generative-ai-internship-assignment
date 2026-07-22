@@ -59,28 +59,33 @@ def github_login() -> RedirectResponse:
 from fastapi.responses import RedirectResponse, JSONResponse
 import httpx
 
+import traceback
+
 @router.get("/google/callback", include_in_schema=False)
 async def google_callback(code: str, db: Session = Depends(get_db)):
     try:
-        access_token_g = await oauth_service.exchange_google_code(code)
-        profile = await oauth_service.fetch_google_profile(access_token_g)
-    except httpx.HTTPStatusError as e:
         try:
-            error_details = e.response.json()
-        except Exception:
-            error_details = e.response.text
-        return JSONResponse(status_code=400, content={"detail": f"Google API Error: {error_details}"})
-        
-    user = user_service.upsert_oauth_user(
-        db,
-        provider=profile.provider,
-        subject=profile.subject,
-        email=profile.email,
-        name=profile.name,
-        image=profile.image,
-    )
-    # Redirect to frontend with the new JWT token
-    return oauth_redirect(create_access_token(user.id, extra={"email": user.email}))
+            access_token_g = await oauth_service.exchange_google_code(code)
+            profile = await oauth_service.fetch_google_profile(access_token_g)
+        except httpx.HTTPStatusError as e:
+            try:
+                error_details = e.response.json()
+            except Exception:
+                error_details = e.response.text
+            return JSONResponse(status_code=400, content={"detail": f"Google API Error: {error_details}"})
+            
+        user = user_service.upsert_oauth_user(
+            db,
+            provider=profile.provider,
+            subject=profile.subject,
+            email=profile.email,
+            name=profile.name,
+            image=profile.image,
+        )
+        return oauth_redirect(create_access_token(user.id, extra={"email": user.email}))
+    except Exception as e:
+        error_msg = traceback.format_exc()
+        return JSONResponse(status_code=500, content={"detail": f"Server Error during callback: {error_msg}"})
 
 
 @router.get("/github/callback", include_in_schema=False)
