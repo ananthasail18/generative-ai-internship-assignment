@@ -222,7 +222,7 @@ def run_pipeline(document_id: int, *, db: Session) -> None:
         for l in pending_lessons:
             future = executor.submit(_process_lesson_worker, l.id)
             future_map[future] = l
-            time.sleep(1) # Stagger submission slightly to avoid burst rate limits
+            time.sleep(4) # Stagger submission by 4 seconds to respect 15 RPM limits
 
         for future in as_completed(future_map):
             completed_counter += 1
