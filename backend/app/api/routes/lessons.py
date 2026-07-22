@@ -136,7 +136,6 @@ def get_lesson(
         not lesson.content
         or "Content coming soon." in lesson.content
         or len((lesson.content or "").strip()) < 30
-        or not lesson.concepts
     )
     if truly_empty:
         # Generate synchronously only for truly empty lessons - rare case
