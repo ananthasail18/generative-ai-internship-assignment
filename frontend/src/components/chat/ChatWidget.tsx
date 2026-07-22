@@ -98,7 +98,7 @@ export function ChatWidget({ lessonId, courseId }: { lessonId?: number; courseId
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 p-4 bg-primary text-white rounded-full shadow-xl hover:scale-105 transition-transform z-40"
+        className="fixed bottom-6 right-6 p-4 bg-primary text-primary-foreground rounded-full shadow-xl hover:scale-105 transition-transform z-40"
       >
         <MessageSquare className="w-6 h-6" />
       </button>
@@ -109,13 +109,13 @@ export function ChatWidget({ lessonId, courseId }: { lessonId?: number; courseId
             initial={{ opacity: 0, y: 50, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 50, scale: 0.95 }}
-            className="fixed bottom-24 right-6 w-[420px] h-[650px] max-w-[calc(100vw-3rem)] max-h-[calc(100vh-8rem)] bg-background/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/40 flex overflow-hidden z-50 ring-1 ring-black/5"
+            className="fixed bottom-24 right-6 w-[420px] h-[650px] max-w-[calc(100vw-3rem)] max-h-[calc(100vh-8rem)] bg-background/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-border flex overflow-hidden z-50 ring-1 ring-black/5"
           >
             {/* Sidebar for Sessions */}
-            <div className={`absolute inset-y-0 left-0 w-64 bg-slate-50/95 backdrop-blur-md border-r border-border transition-transform duration-300 z-20 flex flex-col ${sidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}`}>
-              <div className="p-4 border-b border-border flex items-center justify-between bg-background/50">
+            <div className={`absolute inset-y-0 left-0 w-64 bg-background/95 backdrop-blur-md border-r border-border transition-transform duration-300 z-20 flex flex-col ${sidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}`}>
+              <div className="p-4 border-b border-border flex items-center justify-between bg-secondary/30">
                 <span className="font-semibold text-sm text-foreground">Chat History</span>
-                <button onClick={() => setSidebarOpen(false)} className="p-1 hover:bg-slate-200 rounded-md transition-colors"><X className="w-4 h-4 text-muted-foreground" /></button>
+                <button onClick={() => setSidebarOpen(false)} className="p-1 hover:bg-secondary rounded-md transition-colors"><X className="w-4 h-4 text-muted-foreground" /></button>
               </div>
               <div className="p-3 border-b border-border">
                 <Button onClick={createSession} variant="default" className="w-full text-xs shadow-sm" size="sm">
@@ -127,7 +127,7 @@ export function ChatWidget({ lessonId, courseId }: { lessonId?: number; courseId
                   <button
                     key={s.id}
                     onClick={() => loadSession(s.id)}
-                    className={`w-full text-left px-3 py-2.5 text-sm rounded-lg transition-all duration-200 ${activeSession?.id === s.id ? 'bg-primary text-white shadow-md font-medium' : 'hover:bg-slate-200/70 text-muted-foreground'}`}
+                    className={`w-full text-left px-3 py-2.5 text-sm rounded-lg transition-all duration-200 ${activeSession?.id === s.id ? 'bg-primary text-primary-foreground shadow-md font-medium' : 'hover:bg-secondary text-muted-foreground'}`}
                   >
                     <div className="truncate">{s.title || "New Conversation"}</div>
                     <div className={`text-[10px] mt-0.5 ${activeSession?.id === s.id ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
@@ -143,7 +143,7 @@ export function ChatWidget({ lessonId, courseId }: { lessonId?: number; courseId
               {/* Header */}
               <div className="h-16 border-b border-border flex items-center justify-between px-4 bg-background/80 backdrop-blur-md shadow-sm z-10">
                 <div className="flex items-center gap-3">
-                  <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 hover:bg-slate-100 rounded-xl text-muted-foreground transition-colors">
+                  <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 hover:bg-secondary rounded-xl text-muted-foreground transition-colors">
                     <Menu className="w-5 h-5" />
                   </button>
                   <div className="flex items-center gap-2.5">
@@ -152,19 +152,19 @@ export function ChatWidget({ lessonId, courseId }: { lessonId?: number; courseId
                     </div>
                     <div>
                       <h3 className="font-bold text-sm text-foreground leading-tight">AI Tutor</h3>
-                      <p className="text-[10px] text-green-600 font-medium flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span> Online
+                      <p className="text-[10px] text-emerald-500 font-medium flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Online
                       </p>
                     </div>
                   </div>
                 </div>
-                <button onClick={() => setIsOpen(false)} className="p-2 hover:bg-slate-100 rounded-xl text-muted-foreground transition-colors">
+                <button onClick={() => setIsOpen(false)} className="p-2 hover:bg-secondary rounded-xl text-muted-foreground transition-colors">
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
               {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-5 space-y-6 bg-gradient-to-b from-slate-50/50 to-white scroll-smooth">
+              <div className="flex-1 overflow-y-auto p-5 space-y-6 bg-background/50 scroll-smooth">
                 {!activeSession && (
                   <div className="h-full flex flex-col items-center justify-center text-center opacity-60">
                     <MessageSquare className="w-12 h-12 mb-3 text-muted-foreground" />
@@ -191,13 +191,13 @@ export function ChatWidget({ lessonId, courseId }: { lessonId?: number; courseId
                     key={msg.id || i} 
                     className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
                   >
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-sm ${msg.role === 'user' ? 'bg-primary text-white' : 'bg-background border border-border text-primary'}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-sm ${msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-secondary border border-border text-primary'}`}>
                       {msg.role === 'user' ? <UserIcon className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
                     </div>
                     <div className={`px-4 py-3 max-w-[82%] text-sm shadow-sm ${
                       msg.role === 'user' 
-                        ? 'bg-primary text-white rounded-2xl rounded-tr-sm' 
-                        : 'bg-background border border-border rounded-2xl rounded-tl-sm text-foreground prose prose-sm prose-p:leading-relaxed prose-pre:bg-secondary prose-pre:text-foreground'
+                        ? 'bg-primary text-primary-foreground rounded-2xl rounded-tr-sm' 
+                        : 'bg-secondary/40 border border-border rounded-2xl rounded-tl-sm text-foreground prose prose-sm prose-p:leading-relaxed prose-pre:bg-secondary prose-pre:text-foreground'
                     }`}>
                       {msg.role === 'user' ? (
                         <p className="whitespace-pre-wrap">{msg.content}</p>
@@ -210,10 +210,10 @@ export function ChatWidget({ lessonId, courseId }: { lessonId?: number; courseId
                 
                 {loading && (
                   <div className="flex gap-3">
-                    <div className="w-8 h-8 rounded-full bg-background border border-border text-primary flex items-center justify-center shrink-0 shadow-sm">
+                    <div className="w-8 h-8 rounded-full bg-secondary border border-border text-primary flex items-center justify-center shrink-0 shadow-sm">
                       <Bot className="w-4 h-4" />
                     </div>
-                    <div className="bg-background border border-border shadow-sm rounded-2xl rounded-tl-sm px-5 py-4 flex items-center gap-1.5">
+                    <div className="bg-secondary/40 border border-border shadow-sm rounded-2xl rounded-tl-sm px-5 py-4 flex items-center gap-1.5">
                       <div className="w-1.5 h-1.5 rounded-full bg-primary/40 animate-bounce" />
                       <div className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '150ms' }} />
                       <div className="w-1.5 h-1.5 rounded-full bg-primary/80 animate-bounce" style={{ animationDelay: '300ms' }} />
@@ -233,13 +233,13 @@ export function ChatWidget({ lessonId, courseId }: { lessonId?: number; courseId
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
                       placeholder="Ask anything..."
-                      className="w-full bg-slate-50 border border-border hover:border-border rounded-full pl-5 pr-12 py-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all shadow-inner"
+                      className="w-full bg-secondary/30 border border-border hover:border-primary/30 rounded-full pl-5 pr-12 py-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50 transition-all shadow-inner text-foreground placeholder:text-muted-foreground"
                       disabled={loading}
                     />
                     <button
                       type="submit"
                       disabled={!input.trim() || loading}
-                      className="absolute right-1.5 p-2.5 bg-primary text-white rounded-full shadow-md disabled:opacity-50 disabled:shadow-none hover:bg-primary/90 transition-all"
+                      className="absolute right-1.5 p-2.5 bg-primary text-primary-foreground rounded-full shadow-md disabled:opacity-50 disabled:shadow-none hover:bg-primary/90 transition-all"
                     >
                       <Send className="w-4 h-4" />
                     </button>
