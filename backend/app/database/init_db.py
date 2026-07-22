@@ -80,9 +80,21 @@ def seed_database():
     except Exception as e:
         logger.exception("Error during database seeding: %s", e)
 
+from app.database import Base
+import app.models
+
 def initialize_database():
     """Main entrypoint to run migrations and seed database if necessary."""
-    # 1. Run migrations first to ensure database schema is up-to-date
+    # 1. Create all missing tables directly via SQLAlchemy
+    logger.info("Creating missing database tables via SQLAlchemy metadata...")
+    try:
+        Base.metadata.create_all(bind=engine)
+        logger.info("Tables created successfully.")
+    except Exception as e:
+        logger.exception("Failed to create tables: %s", e)
+        
+    # 2. Run migrations to ensure database schema is up-to-date (if any exist)
     run_migrations()
-    # 2. Seed database
+    
+    # 3. Seed database
     seed_database()
